@@ -1,0 +1,12 @@
+name = "pagesweb"
+compatibility_date = "2026-09-18"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pagesweb-db"
+database_id = "2f78f2b2-ac28-4f90-a956-a76b1bfed3bd"
+
+[[kv_namespaces]]
+binding = "PW_KV"
+id = "df6d80c898694874b1e38c9d1c88c892"
