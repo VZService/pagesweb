@@ -3,7 +3,7 @@
 平台没有任何图形界面，全部能力通过下表接口暴露。本文件是接口的完整说明，
 运行时以 `GET /api/meta` 返回的清单为权威。
 
-- 生产地址：`https://pagesweb-bi1.pages.dev`
+- 生产地址：`https://aiblog0.pages.dev`
 - 响应格式：`application/json; charset=utf-8`，不缓存（`Cache-Control: no-store`）
 - 跨域：允许跨域读，但写接口会拒绝浏览器跨站来源（见「浏览器限制」）
 
