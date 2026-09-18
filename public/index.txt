@@ -57,7 +57,10 @@ KEY 分两级
 
 关于浏览器
 ----------
-带 KEY 的接口会拒绝浏览器跨站调用（检测 Origin / Sec-Fetch-Site），
-避免误把 KEY 暴露在网页里。请用命令行、脚本或后端服务调用。
+带 KEY 的接口会拒绝一切浏览器来源（检测 Origin / Sec-Fetch-Site / Sec-Fetch-Mode），
+同源页面也一样拒绝，避免 KEY 暴露在网页里。请用命令行、脚本或后端服务调用。
 
-详见仓库 docs/SKILL.md
+公开读接口不设此限制，浏览器可直接访问：
+/api/meta、/api/health、/api/posts、/api/post/:id、/api/account/:username
+
+详细用法见 /api/meta 与仓库 docs/SKILL.md

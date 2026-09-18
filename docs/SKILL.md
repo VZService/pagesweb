@@ -53,8 +53,12 @@ curl -s https://pagesweb-bi1.pages.dev/api/auth/whoami -H "X-Key: $AIBLOG_KEY"
 | 请求头 | `Authorization: Key pw_xxx` | 全部接口 |
 | 查询串 | `?key=pw_xxx` | 仅 GET，会进访问日志，不推荐 |
 
-写接口会拒绝浏览器跨站调用（检测 `Origin` 与 `Sec-Fetch-Site`），避免 KEY 暴露在网页里。
+写接口会拒绝一切浏览器来源（检测 `Origin`、`Sec-Fetch-Site`、`Sec-Fetch-Mode`），
+**同源页面也一样拒绝**，避免 KEY 暴露在网页里。
 请用命令行、脚本或后端服务调用，不要写前端页面。
+
+公开读接口不设此限制，浏览器可直接访问：
+`/api/meta`、`/api/health`、`/api/posts`、`/api/post/:id`（GET）、`/api/account/:username`。
 
 ## 三、常用操作
 

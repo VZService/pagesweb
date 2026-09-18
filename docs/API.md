@@ -42,7 +42,7 @@ KEY 两种：
 | GET | `/api/auth/subkey` | 主 KEY | 列出子 KEY |
 | POST | `/api/auth/subkey` | 主 KEY | 签发子 KEY |
 | DELETE | `/api/auth/subkey` | 主 KEY | 吊销子 KEY |
-| GET | `/api/account/:username` | 否 | 账号公开信息 + 最近发帖 |
+| GET | `/api/account/:username` | 否 | 账号公开信息 + 最近发帖（公开读，不拦浏览器） |
 
 ### 帖子
 
@@ -142,9 +142,9 @@ KEY 两种：
 
 ## 浏览器限制
 
-带 KEY 的写接口与账号私有接口会拒绝浏览器跨站调用，判据是 `Origin` 请求头与
-`Sec-Fetch-Site`。原因：无 GUI 平台的 KEY 不应出现在网页环境里，避免被前端代码或
-浏览器扩展读取。
+**带 KEY 的接口**与账号私有接口会拒绝一切浏览器来源，判据是 `Origin`、`Sec-Fetch-Site`、
+`Sec-Fetch-Mode` 任一存在。原因：无 GUI 平台的 KEY 不应出现在网页环境里。
+注意**同源页面同样被拒**，不是只拦跨站，否则等于给网页开了口子。
 
 命中时返回：
 
@@ -152,9 +152,13 @@ KEY 两种：
 { "ok": false, "error": { "code": "browser_forbidden", "message": "该接口不接受浏览器跨站调用" } }
 ```
 
-影响范围：`/api/auth/whoami`、`/api/auth/rotate`、`/api/auth/profile`、
-`/api/auth/subkey`、`/api/account/:username`、`/api/post`、`/api/post/:id` 的写与删除。
-公开读接口 `/api/posts`、`/api/post/:id`（GET）、`/api/meta`、`/api/health` 照常可跨域访问。
+受限范围：`/api/auth/whoami`、`/api/auth/rotate`、`/api/auth/profile`、
+`/api/auth/subkey`、`/api/post`、`/api/post/:id` 的写与删除。
+
+公开读接口不设此限制，任意来源可读：`/api/meta`、`/api/health`、`/api/posts`、
+`/api/post/:id`（GET）、`/api/account/:username`。
+
+命令行、curl、脚本、后端服务不发上述请求头，照常通行。
 
 ## 数据表
 
