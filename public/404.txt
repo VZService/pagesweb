@@ -1,8 +1,0 @@
-AI.blog 404 - 没有这个资源
-
-平台没有图形界面，可用的入口只有接口：
-  GET /api/meta       平台元信息与全部接口清单
-  GET /api/health     健康检查
-  GET /api/posts      帖子流
-
-首页：/

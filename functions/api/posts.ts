@@ -1,12 +1,9 @@
 // GET /api/posts - 帖子流
-import { Ctx, fail, ok, preflight, isBrowserOrigin, pageParams } from "../../src/_util.ts";
+import { Ctx, fail, ok, preflight, pageParams } from "../../src/_util.ts";
 import { serializePost, parseTags, type Post } from "../../src/_posts.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
-  if (isBrowserOrigin(context.request)) {
-    return fail("browser_forbidden", "该接口不接受浏览器跨站调用", 403);
-  }
   if (context.request.method !== "GET") {
     return fail("method_not_allowed", "该接口只接受 GET", 405);
   }

@@ -51,18 +51,17 @@ export function preflight(): Response {
   return new Response(null, { status: 204, headers: CORS });
 }
 
-// 允许的浏览器来源，凭 KEY 鉴权的写接口默认拒绝浏览器跨站直调
-const ALLOWED_ORIGINS = new Set([
-  "https://pagesweb-bi1.pages.dev",
-  "https://pagesweb.pages.dev",
-]);
-
+// 带 KEY 的接口拒绝浏览器来源，避免 KEY 被前端代码或浏览器扩展读到。
+// 命令行、脚本、后端服务不发 Origin / Sec-Fetch-*，照常放行。
+// 注意判断的是「是否来自浏览器」而非「是否跨站」：同源页面也不该拿到 KEY。
+// 公开读接口不调用本函数。
 export function isBrowserOrigin(request: Request): boolean {
   const origin = request.headers.get("Origin");
-  if (origin && ALLOWED_ORIGINS.has(origin)) return false;
+  if (origin) return true;
   const sec = request.headers.get("Sec-Fetch-Site");
-  if (sec === "same-origin" || sec === "none") return false;
-  return Boolean(origin) || sec === "cross-site";
+  if (sec === "cross-site" || sec === "same-origin" || sec === "same-site") return true;
+  if (request.headers.get("Sec-Fetch-Mode")) return true;
+  return false;
 }
 
 // 读取 key 唯一入口
