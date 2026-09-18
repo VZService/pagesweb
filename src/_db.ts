@@ -48,7 +48,6 @@ const TABLE_CREATES: string[] = [
   `CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_posts_username ON posts (username)`,
   `CREATE INDEX IF NOT EXISTS idx_posts_reply_to ON posts (reply_to)`,
-  `CREATE INDEX IF NOT EXISTS idx_posts_board ON posts (board_id)`,
 
   `CREATE TABLE IF NOT EXISTS subkeys (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,8 +84,8 @@ const MIGRATIONS: Record<string, string[]> = {
   v2: [],
   v3: [],
   v4: [
-    // v4：引入 partitions（分区）。帖子改挂 board_id，移除 tags。
-    // 旧数据不保留：posts 直接重建为无 tags 结构。
+    // v4：引入分区。帖子改挂 board_id，移除 tags。
+    // DROP + CREATE 而不是 ALTER：SQLite 不支持 DROP COLUMN，且旧数据本就不保留。
     `DROP TABLE IF EXISTS posts`,
     `CREATE TABLE IF NOT EXISTS posts (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,6 +106,13 @@ const MIGRATIONS: Record<string, string[]> = {
   ],
 };
 
+// 迁移后才会存在的新列索引，不能放进 TABLE_CREATES：
+// 那里是在迁移之前无条件跑的，旧表没有 board_id 时 CREATE INDEX 会报
+// "no such column"，中断整批语句，导致迁移根本没机会执行。
+const POST_MIGRATION_INDEXES = [
+  `CREATE INDEX IF NOT EXISTS idx_posts_board ON posts (board_id)`,
+];
+
 export async function ensureSchema(env: Env): Promise<void> {
   // 建表失败必须抛出去，否则迁移会被静默跳过，接口带着旧表结构跑，很难查。
   for (const sql of TABLE_CREATES) {
@@ -114,26 +120,29 @@ export async function ensureSchema(env: Env): Promise<void> {
   }
 
   // 以 D1 里的 schema_meta 为版本权威。KV 只作为快速短路缓存，丢了也不会重跑迁移。
-  let applied = "";
   const row = await env.DB.prepare(`SELECT v FROM schema_meta WHERE k = 'schema_version'`).first<{ v: string }>();
-  applied = row?.v ?? "";
-  if (applied === SCHEMA_VERSION) return;
+  const applied = row?.v ?? "";
 
-  const steps = MIGRATIONS[SCHEMA_VERSION] ?? [];
-  for (const sql of steps) {
-    await env.DB.prepare(sql).run();
+  if (applied !== SCHEMA_VERSION) {
+    const steps = MIGRATIONS[SCHEMA_VERSION] ?? [];
+    for (const sql of steps) {
+      await env.DB.prepare(sql).run();
+    }
+    await env.DB.prepare(
+      `INSERT INTO schema_meta (k, v, updated_at) VALUES ('schema_version', ?, ?)
+       ON CONFLICT(k) DO UPDATE SET v = excluded.v, updated_at = excluded.updated_at`,
+    )
+      .bind(SCHEMA_VERSION, Date.now())
+      .run();
+    try {
+      await env.PW_KV.put(`schema:${SCHEMA_VERSION}`, String(Date.now()));
+    } catch {
+      // KV 只是缓存，失败不影响正确性
+    }
   }
 
-  await env.DB.prepare(
-    `INSERT INTO schema_meta (k, v, updated_at) VALUES ('schema_version', ?, ?)
-     ON CONFLICT(k) DO UPDATE SET v = excluded.v, updated_at = excluded.updated_at`,
-  )
-    .bind(SCHEMA_VERSION, Date.now())
-    .run();
-
-  try {
-    await env.PW_KV.put(`schema:${SCHEMA_VERSION}`, String(Date.now()));
-  } catch {
-    // KV 只是缓存，失败不影响正确性
+  // 每次请求都跑，保证迁移刚完成的那一次也能把索引补上
+  for (const sql of POST_MIGRATION_INDEXES) {
+    await env.DB.prepare(sql).run();
   }
 }
