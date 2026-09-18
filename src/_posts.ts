@@ -1,15 +1,16 @@
 // 帖子模型
+// 每条帖子必须属于一个分区（board_id），分区在发帖时必填。
 
 import { nowMs, clampString, type Env } from "./_util";
 
 export interface Post {
   id: number;
+  board_id: number | null;
   account_id: number | null;
   username: string;
   title: string;
   content: string;
   reply_to: number | null;
-  tags: string;
   created_at: number;
   updated_at: number;
   is_deleted: number;
@@ -17,58 +18,30 @@ export interface Post {
 
 export const TITLE_MAX = 200;
 export const CONTENT_MAX = 20000;
-export const TAG_MAX = 10;
-
-export function normalizeTags(input: unknown): string {
-  let list: string[] = [];
-  if (Array.isArray(input)) {
-    list = input.map((t) => clampString(t, 32)).filter(Boolean);
-  } else if (typeof input === "string") {
-    list = input
-      .split(/[,\s]+/)
-      .map((t) => clampString(t, 32))
-      .filter(Boolean);
-  }
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const t of list) {
-    const k = t.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(t);
-    if (out.length >= TAG_MAX) break;
-  }
-  return out.join(",");
-}
-
-export function parseTags(raw: string): string[] {
-  if (!raw) return [];
-  return raw.split(",").map((t) => t.trim()).filter(Boolean);
-}
 
 export async function createPost(
   env: Env,
   input: {
+    boardId: number;
     accountId: number | null;
     username: string;
     title: string;
     content: string;
     replyTo?: number | null;
-    tags?: string;
   },
 ): Promise<number> {
   const ts = nowMs();
   const res = await env.DB.prepare(
-    `INSERT INTO posts (account_id, username, title, content, reply_to, tags, created_at, updated_at, is_deleted)
+    `INSERT INTO posts (board_id, account_id, username, title, content, reply_to, created_at, updated_at, is_deleted)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
   )
     .bind(
+      input.boardId,
       input.accountId,
       input.username,
       input.title,
       input.content,
       input.replyTo ?? null,
-      input.tags ?? "",
       ts,
       ts,
     )
@@ -94,7 +67,7 @@ export async function softDeletePost(env: Env, id: number): Promise<boolean> {
 export async function updatePost(
   env: Env,
   id: number,
-  fields: { title?: string; content?: string; tags?: string },
+  fields: { title?: string; content?: string },
 ): Promise<boolean> {
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -106,10 +79,6 @@ export async function updatePost(
     sets.push("content = ?");
     vals.push(fields.content);
   }
-  if (fields.tags !== undefined) {
-    sets.push("tags = ?");
-    vals.push(fields.tags);
-  }
   if (!sets.length) return false;
   sets.push("updated_at = ?");
   vals.push(nowMs(), id);
@@ -119,16 +88,20 @@ export async function updatePost(
   return (res.meta.changes ?? 0) > 0;
 }
 
-export function serializePost(p: Post, replies?: number) {
+export function serializePost(p: Post, extra?: { replies?: number; boardSlug?: string; boardName?: string }) {
   return {
     id: p.id,
+    board_id: p.board_id,
+    board: extra?.boardSlug ?? null,
+    board_name: extra?.boardName ?? null,
     author: p.username,
     title: p.title,
     content: p.content,
-    tags: parseTags(p.tags),
     reply_to: p.reply_to,
-    reply_count: replies ?? undefined,
+    reply_count: extra?.replies ?? undefined,
     created_at: p.created_at,
     updated_at: p.updated_at,
   };
 }
+
+export { clampString };

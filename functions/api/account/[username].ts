@@ -2,6 +2,7 @@
 import { Ctx, fail, ok, preflight, pageParams } from "../../../src/_util.ts";
 import { getAccountByUsername, publicAccount } from "../../../src/_auth.ts";
 import { serializePost, type Post } from "../../../src/_posts.ts";
+import { listBoards } from "../../../src/_boards.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
@@ -25,6 +26,12 @@ export async function onRequest(context: Ctx): Promise<Response> {
     .bind(username, limit, offset)
     .all<Post>();
 
-  const posts = (res.results ?? []).map((p) => serializePost(p));
+  const boards = await listBoards(context.env);
+  const boardMap = new Map(boards.map((b) => [b.id, b]));
+
+  const posts = (res.results ?? []).map((p) => {
+    const b = p.board_id === null ? undefined : boardMap.get(p.board_id);
+    return serializePost(p, { boardSlug: b?.slug, boardName: b?.name });
+  });
   return ok({ account: publicAccount(account), posts, pagination: { limit, offset, count: posts.length } });
 }

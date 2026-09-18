@@ -1,8 +1,8 @@
 // PagesWeb 公共工具层
 // 所有接口统一 JSON 响应、统一错误结构、统一鉴权入口。
 
-export const API_VERSION = "1.0.0";
-export const SCHEMA_VERSION = "v3";
+export const API_VERSION = "2.0.0";
+export const SCHEMA_VERSION = "v4";
 
 export interface Env {
   DB: D1Database;

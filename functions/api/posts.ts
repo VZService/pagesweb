@@ -1,6 +1,7 @@
 // GET /api/posts - 帖子流
 import { Ctx, fail, ok, preflight, pageParams } from "../../src/_util.ts";
-import { serializePost, parseTags, type Post } from "../../src/_posts.ts";
+import { serializePost, type Post } from "../../src/_posts.ts";
+import { getBoardBySlug, listBoards, serializeBoard, countBoardPosts } from "../../src/_boards.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
@@ -11,36 +12,38 @@ export async function onRequest(context: Ctx): Promise<Response> {
   const url = new URL(context.request.url);
   const { limit, offset } = pageParams(url, 20, 100);
   const author = (url.searchParams.get("author") ?? "").trim().toLowerCase();
-  const tag = (url.searchParams.get("tag") ?? "").trim();
+  const boardSlug = (url.searchParams.get("board") ?? "").trim().toLowerCase();
   const keyword = (url.searchParams.get("q") ?? "").trim();
   const rootOnly = url.searchParams.get("root_only") === "1";
 
-  const where: string[] = ["is_deleted = 0"];
+  const where: string[] = ["p.is_deleted = 0"];
   const binds: unknown[] = [];
   if (author) {
-    where.push("username = ?");
+    where.push("p.username = ?");
     binds.push(author);
   }
-  if (tag) {
-    where.push("(',' || tags || ',') LIKE ?");
-    binds.push(`%,${tag.toLowerCase()},%`);
+  if (boardSlug) {
+    const b = await getBoardBySlug(context.env, boardSlug);
+    if (!b) return fail("board_not_found", `分区 "${boardSlug}" 不存在`, 404);
+    where.push("p.board_id = ?");
+    binds.push(b.id);
   }
   if (keyword) {
-    where.push("(title LIKE ? OR content LIKE ?)");
+    where.push("(p.title LIKE ? OR p.content LIKE ?)");
     binds.push(`%${keyword}%`, `%${keyword}%`);
   }
-  if (rootOnly) where.push("reply_to IS NULL");
+  if (rootOnly) where.push("p.reply_to IS NULL");
 
   const whereSql = where.join(" AND ");
 
   const countRow = await context.env.DB.prepare(
-    `SELECT COUNT(*) AS n FROM posts WHERE ${whereSql}`,
+    `SELECT COUNT(*) AS n FROM posts p WHERE ${whereSql}`,
   )
     .bind(...binds)
     .first<{ n: number }>();
 
   const res = await context.env.DB.prepare(
-    `SELECT * FROM posts WHERE ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+    `SELECT p.* FROM posts p WHERE ${whereSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`,
   )
     .bind(...binds, limit, offset)
     .all<Post>();
@@ -59,27 +62,29 @@ export async function onRequest(context: Ctx): Promise<Response> {
     for (const r of rc.results ?? []) replyCounts.set(r.reply_to, r.n);
   }
 
-  const posts = rows.map((p) => serializePost(p, replyCounts.get(p.id) ?? 0));
+  // 分区名映射，避免每条帖子单独查库
+  const boards = await listBoards(context.env);
+  const boardMap = new Map(boards.map((b) => [b.id, b]));
 
-  const tagRows = await context.env.DB.prepare(
-    `SELECT tags FROM posts WHERE is_deleted = 0 AND tags != '' LIMIT 500`,
-  ).all<{ tags: string }>();
-  const tagCounter = new Map<string, number>();
-  for (const r of tagRows.results ?? []) {
-    for (const t of parseTags(r.tags)) {
-      tagCounter.set(t, (tagCounter.get(t) ?? 0) + 1);
-    }
+  const posts = rows.map((p) => {
+    const b = p.board_id === null ? undefined : boardMap.get(p.board_id);
+    return serializePost(p, {
+      replies: replyCounts.get(p.id) ?? 0,
+      boardSlug: b?.slug,
+      boardName: b?.name,
+    });
+  });
+
+  const boardList = [];
+  for (const b of boards) {
+    boardList.push(serializeBoard(b, await countBoardPosts(context.env, b.id)));
   }
-  const popularTags = [...tagCounter.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 30)
-    .map(([name, count]) => ({ name, count }));
 
   return ok({
     posts,
     total: countRow?.n ?? 0,
     pagination: { limit, offset, count: posts.length },
-    filters: { author: author || null, tag: tag || null, q: keyword || null, root_only: rootOnly },
-    popular_tags: popularTags,
+    filters: { author: author || null, board: boardSlug || null, q: keyword || null, root_only: rootOnly },
+    boards: boardList,
   });
 }

@@ -4,8 +4,9 @@ import {
 } from "../../../src/_util.ts";
 import { authByKey, audit } from "../../../src/_auth.ts";
 import {
-  getPost, softDeletePost, updatePost, serializePost, normalizeTags, TITLE_MAX, CONTENT_MAX, type Post,
+  getPost, softDeletePost, updatePost, serializePost, TITLE_MAX, CONTENT_MAX, type Post,
 } from "../../../src/_posts.ts";
+import { getBoardById } from "../../../src/_boards.ts";
 
 function readId(context: Ctx): number {
   const raw = context.params.id;
@@ -39,14 +40,23 @@ export async function onRequest(context: Ctx): Promise<Response> {
       parent = p ? { id: p.id, author: p.username, title: p.title } : null;
     }
 
+    const board = post.board_id === null ? null : await getBoardById(context.env, post.board_id);
+
     return ok({
-      post: serializePost(post, (replies.results ?? []).length),
-      replies: (replies.results ?? []).map((r) => serializePost(r)),
+      post: serializePost(post, {
+        replies: (replies.results ?? []).length,
+        boardSlug: board?.slug,
+        boardName: board?.name,
+      }),
+      board: board ? { id: board.id, slug: board.slug, name: board.name } : null,
+      replies: (replies.results ?? []).map((r) =>
+        serializePost(r, { boardSlug: board?.slug, boardName: board?.name }),
+      ),
       parent,
     });
   }
 
-  const body = method === "DELETE" ? await readJson(context.request) : await readJson(context.request);
+  const body = await readJson(context.request);
   const key = await readKey({ body, request: context.request });
   if (!key) return fail("key_required", "缺少 KEY", 401);
 
@@ -68,21 +78,25 @@ export async function onRequest(context: Ctx): Promise<Response> {
 
   if (method === "PATCH" || method === "POST") {
     if (!body) return fail("invalid_body", "请求体必须是 application/json 对象", 400);
-    const fields: { title?: string; content?: string; tags?: string } = {};
+    const fields: { title?: string; content?: string } = {};
     if (body.title !== undefined) fields.title = clampString(body.title, TITLE_MAX);
     if (body.content !== undefined) {
       const c = clampString(body.content, CONTENT_MAX);
       if (!c) return fail("content_required", "content 不能为空", 400);
       fields.content = c;
     }
-    if (body.tags !== undefined) fields.tags = normalizeTags(body.tags);
     if (!Object.keys(fields).length) {
-      return fail("nothing_to_update", "没有可更新的字段（title / content / tags）", 400);
+      return fail("nothing_to_update", "没有可更新的字段（title / content）。帖子不能改分区。", 400);
     }
     await updatePost(context.env, id, fields);
     await audit(context.env, auth.account.id, "update_post", `#${id}`);
     const fresh = await getPost(context.env, id);
-    return ok({ post: fresh ? serializePost(fresh) : null });
+    const board = fresh?.board_id == null ? null : await getBoardById(context.env, fresh.board_id);
+    return ok({
+      post: fresh
+        ? serializePost(fresh, { boardSlug: board?.slug, boardName: board?.name })
+        : null,
+    });
   }
 
   return fail("method_not_allowed", "支持 GET / PATCH / DELETE", 405);
