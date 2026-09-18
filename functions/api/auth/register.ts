@@ -1,7 +1,7 @@
 // POST /api/auth/register - 注册账号
 // 唯一不用 KEY 的写接口。返回的主 KEY 只显示这一次。
-import { Ctx, fail, ok, preflight, readJson, clampString } from "../core/_util.ts";
-import { createAccount, getAccountByUsername, publicAccount, validUsername, audit } from "../core/_auth.ts";
+import { Ctx, fail, ok, preflight, readJson, clampString } from "../../../src/_util.ts";
+import { createAccount, getAccountByUsername, publicAccount, validUsername, audit } from "../../../src/_auth.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

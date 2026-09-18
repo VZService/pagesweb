@@ -1,6 +1,6 @@
 // GET /api/auth/whoami - 查当前 KEY 对应账号
-import { Ctx, fail, ok, preflight, readKey, isBrowserOrigin } from "../core/_util.ts";
-import { authByKey, publicAccount } from "../core/_auth.ts";
+import { Ctx, fail, ok, preflight, readKey, isBrowserOrigin } from "../../../src/_util.ts";
+import { authByKey, publicAccount } from "../../../src/_auth.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

@@ -1,6 +1,6 @@
 // POST /api/auth/rotate - 轮换主 KEY（仅主 KEY 可操作）
-import { Ctx, fail, ok, preflight, readKey, isBrowserOrigin } from "../core/_util.ts";
-import { authByKey, rotateMasterKey, audit } from "../core/_auth.ts";
+import { Ctx, fail, ok, preflight, readKey, isBrowserOrigin } from "../../../src/_util.ts";
+import { authByKey, rotateMasterKey, audit } from "../../../src/_auth.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

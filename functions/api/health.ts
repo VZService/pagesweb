@@ -1,6 +1,6 @@
 // GET /api/health - 健康检查，顺带探活 D1 / KV
-import { Ctx, ok, preflight, API_VERSION } from "../core/_util.ts";
-import { ensureSchema } from "../core/_db.ts";
+import { Ctx, ok, preflight, API_VERSION } from "../../src/_util.ts";
+import { ensureSchema } from "../../src/_db.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

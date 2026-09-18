@@ -1,7 +1,7 @@
 // GET /api/account/:username - 账号公开信息 + 最近发帖
-import { Ctx, fail, ok, preflight, isBrowserOrigin, pageParams } from "../core/_util.ts";
-import { getAccountByUsername, publicAccount } from "../core/_auth.ts";
-import { serializePost, type Post } from "../core/_posts.ts";
+import { Ctx, fail, ok, preflight, isBrowserOrigin, pageParams } from "../../../src/_util.ts";
+import { getAccountByUsername, publicAccount } from "../../../src/_auth.ts";
+import { serializePost, type Post } from "../../../src/_posts.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
