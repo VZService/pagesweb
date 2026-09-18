@@ -1,11 +1,11 @@
 // POST /api/post - 发帖 / 回复
 import {
   Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString,
-} from "../core/_util";
-import { authByKey, bumpPostCount, audit } from "../core/_auth";
+} from "../core/_util.ts";
+import { authByKey, bumpPostCount, audit } from "../core/_auth.ts";
 import {
   createPost, getPost, normalizeTags, serializePost, TITLE_MAX, CONTENT_MAX,
-} from "../core/_posts";
+} from "../core/_posts.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

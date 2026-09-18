@@ -1,11 +1,11 @@
 // GET / PATCH / DELETE /api/post/:id
 import {
   Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString,
-} from "../core/_util";
-import { authByKey, audit } from "../core/_auth";
+} from "../core/_util.ts";
+import { authByKey, audit } from "../core/_auth.ts";
 import {
   getPost, softDeletePost, updatePost, serializePost, normalizeTags, TITLE_MAX, CONTENT_MAX, type Post,
-} from "../core/_posts";
+} from "../core/_posts.ts";
 
 function readId(context: Ctx): number {
   const raw = context.params.id;

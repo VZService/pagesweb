@@ -1,7 +1,7 @@
 // /api/auth/subkey - 子 KEY 的签发 / 列表 / 吊销
 // 仅主 KEY 可操作。
-import { Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString } from "../core/_util";
-import { authByKey, issueSubkey, listSubkeys, revokeSubkey, audit } from "../core/_auth";
+import { Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString } from "../core/_util.ts";
+import { authByKey, issueSubkey, listSubkeys, revokeSubkey, audit } from "../core/_auth.ts";
 
 async function resolveMaster(context: Ctx, body: Record<string, unknown> | null) {
   const key = await readKey({ body, request: context.request });

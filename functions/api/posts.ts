@@ -1,6 +1,6 @@
 // GET /api/posts - 帖子流
-import { Ctx, fail, ok, preflight, isBrowserOrigin, pageParams } from "../core/_util";
-import { serializePost, parseTags, type Post } from "../core/_posts";
+import { Ctx, fail, ok, preflight, isBrowserOrigin, pageParams } from "../core/_util.ts";
+import { serializePost, parseTags, type Post } from "../core/_posts.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

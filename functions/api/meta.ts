@@ -5,7 +5,7 @@ import {
   Ctx,
   ok,
   preflight,
-} from "../core/_util";
+} from "../core/_util.ts";
 
 const ENDPOINTS = [
   { method: "GET", path: "/api/meta", auth: false, desc: "平台元信息与接口清单" },

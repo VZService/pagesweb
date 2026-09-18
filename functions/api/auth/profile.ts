@@ -1,6 +1,6 @@
 // PATCH /api/auth/profile - 修改显示名 / 简介（不改 username）
-import { Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString, nowMs } from "../core/_util";
-import { authByKey, getAccountById, publicAccount, audit } from "../core/_auth";
+import { Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString, nowMs } from "../core/_util.ts";
+import { authByKey, getAccountById, publicAccount, audit } from "../core/_auth.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
