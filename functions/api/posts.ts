@@ -1,7 +1,7 @@
 // GET /api/posts - 帖子流
 import { Ctx, fail, ok, preflight, pageParams } from "../../src/_util.ts";
 import { serializePost, type Post } from "../../src/_posts.ts";
-import { getBoardBySlug, listBoards, serializeBoard, countBoardPosts } from "../../src/_boards.ts";
+import { getBoardBySlug, listBoards, serializeBoard, countAllBoardPosts } from "../../src/_boards.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();
@@ -75,10 +75,8 @@ export async function onRequest(context: Ctx): Promise<Response> {
     });
   });
 
-  const boardList = [];
-  for (const b of boards) {
-    boardList.push(serializeBoard(b, await countBoardPosts(context.env, b.id)));
-  }
+  const boardCounts = await countAllBoardPosts(context.env);
+  const boardList = boards.map((b) => serializeBoard(b, boardCounts.get(b.id) ?? 0));
 
   return ok({
     posts,

@@ -9,6 +9,16 @@ export async function onRequest(context: Ctx): Promise<Response> {
     return fail("method_not_allowed", "该接口只接受 POST", 405);
   }
 
+  // 限流：按 IP 每日计数（北京时间日界），计数存 KV，对外不报剩余次数
+  const ip = context.request.headers.get("CF-Connecting-IP");
+  if (ip) {
+    const day = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+    const k = `limit:register:${day}:${ip}`;
+    const n = Number((await context.env.PW_KV.get(k)) ?? "0") + 1;
+    if (n > 50) return fail("too_many_attempts", "注册尝试过于频繁，请明天再试", 429);
+    await context.env.PW_KV.put(k, String(n), { expirationTtl: 90000 });
+  }
+
   const body = (await readJson(context.request)) ?? {};
   const username = clampString(body.username, 32).toLowerCase();
   const displayName = clampString(body.display_name ?? body.display, 48);

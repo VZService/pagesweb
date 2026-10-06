@@ -5,7 +5,7 @@ import {
 } from "../../src/_util.ts";
 import { authByKey, audit } from "../../src/_auth.ts";
 import {
-  createBoard, getBoardBySlug, listBoards, serializeBoard, countBoardPosts,
+  createBoard, getBoardBySlug, listBoards, serializeBoard, countAllBoardPosts,
   normalizeSlug, validSlug, NAME_MAX, DESC_MAX, BOARD_PASS_MIN, BOARD_PASS_MAX,
 } from "../../src/_boards.ts";
 
@@ -16,10 +16,8 @@ export async function onRequest(context: Ctx): Promise<Response> {
   // 公开读：列出全部分区
   if (method === "GET") {
     const boards = await listBoards(context.env);
-    const out = [];
-    for (const b of boards) {
-      out.push(serializeBoard(b, await countBoardPosts(context.env, b.id)));
-    }
+    const counts = await countAllBoardPosts(context.env);
+    const out = boards.map((b) => serializeBoard(b, counts.get(b.id) ?? 0));
     return ok({ boards: out, total: out.length });
   }
 

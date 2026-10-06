@@ -7,7 +7,7 @@ import {
 import { authByKey, audit } from "../../../src/_auth.ts";
 import {
   getBoardBySlug, updateBoard, deleteBoard, serializeBoard, countBoardPosts,
-  boardHasPassword, NAME_MAX, DESC_MAX, BOARD_PASS_MIN, BOARD_PASS_MAX,
+  boardHasPassword, randomSalt, NAME_MAX, DESC_MAX, BOARD_PASS_MIN, BOARD_PASS_MAX,
 } from "../../../src/_boards.ts";
 import { serializePost, type Post } from "../../../src/_posts.ts";
 
@@ -101,7 +101,7 @@ export async function onRequest(context: Ctx): Promise<Response> {
 
   if (method === "PATCH" || method === "POST") {
     if (!body) return fail("invalid_body", "请求体必须是 application/json 对象", 400);
-    const fields: { name?: string; description?: string; is_locked?: number; pass_hash?: string } = {};
+    const fields: { name?: string; description?: string; is_locked?: number; pass_hash?: string; pass_salt?: string } = {};
 
     if (body.name !== undefined) {
       const n = clampString(body.name, NAME_MAX);
@@ -122,7 +122,14 @@ export async function onRequest(context: Ctx): Promise<Response> {
       if (pw && pw.length < BOARD_PASS_MIN) {
         return fail("password_too_short", `分区密码至少 ${BOARD_PASS_MIN} 个字符`, 400);
       }
-      fields.pass_hash = pw ? await sha256Hex(pw) : "";
+      if (pw) {
+        const salt = randomSalt();
+        fields.pass_salt = salt;
+        fields.pass_hash = await sha256Hex(salt + pw);
+      } else {
+        fields.pass_salt = "";
+        fields.pass_hash = "";
+      }
     }
 
     if (!Object.keys(fields).length) {

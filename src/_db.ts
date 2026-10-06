@@ -104,6 +104,12 @@ const MIGRATIONS: Record<string, string[]> = {
     `CREATE INDEX IF NOT EXISTS idx_posts_reply_to ON posts (reply_to)`,
     `CREATE INDEX IF NOT EXISTS idx_posts_board ON posts (board_id)`,
   ],
+  v5: [
+    // v5：分区密码加盐（pass_salt 存盐，pass_hash = sha256(盐+密码)）。
+    // 只走迁移加列、不进 TABLE_CREATES：新装库也会经迁移补上该列，新旧路径结构一致；
+    // 旧哈希的 pass_salt 为空串，校验侧按无盐比对，存量分区密码继续有效。
+    `ALTER TABLE boards ADD COLUMN pass_salt TEXT NOT NULL DEFAULT ''`,
+  ],
 };
 
 // 迁移后才会存在的新列索引，不能放进 TABLE_CREATES：

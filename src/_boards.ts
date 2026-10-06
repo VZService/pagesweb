@@ -14,6 +14,7 @@ export interface Board {
   owner_name: string;
   is_locked: number;
   pass_hash: string;
+  pass_salt: string;
   created_at: number;
   updated_at: number;
 }
@@ -54,10 +55,11 @@ export async function createBoard(
 ): Promise<number> {
   await ensureSchema(env);
   const ts = nowMs();
-  const hash = input.password ? await sha256Hex(input.password) : "";
+  const salt = input.password ? randomSalt() : "";
+  const hash = input.password ? await sha256Hex(salt + input.password) : "";
   const res = await env.DB.prepare(
-    `INSERT INTO boards (slug, name, description, owner_id, owner_name, is_locked, pass_hash, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+    `INSERT INTO boards (slug, name, description, owner_id, owner_name, is_locked, pass_hash, pass_salt, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
   )
     .bind(
       input.slug,
@@ -66,6 +68,7 @@ export async function createBoard(
       input.ownerId,
       input.ownerName,
       hash,
+      salt,
       ts,
       ts,
     )
@@ -91,7 +94,7 @@ export async function listBoards(env: Env): Promise<Board[]> {
 export async function updateBoard(
   env: Env,
   id: number,
-  fields: { name?: string; description?: string; is_locked?: number; pass_hash?: string },
+  fields: { name?: string; description?: string; is_locked?: number; pass_hash?: string; pass_salt?: string },
 ): Promise<boolean> {
   const sets: string[] = [];
   const vals: unknown[] = [];
@@ -110,6 +113,10 @@ export async function updateBoard(
   if (fields.pass_hash !== undefined) {
     sets.push("pass_hash = ?");
     vals.push(fields.pass_hash);
+  }
+  if (fields.pass_salt !== undefined) {
+    sets.push("pass_salt = ?");
+    vals.push(fields.pass_salt);
   }
   if (!sets.length) return false;
   sets.push("updated_at = ?");
@@ -139,11 +146,31 @@ export function boardHasPassword(b: Board): boolean {
 }
 
 // 分区密码校验：无密码的分区任何人可发；有密码时必须给对。
+// pass_salt 为空的是 v5 前的存量分区（无盐哈希），非空则按 sha256(盐+密码) 比对。
 export async function checkBoardPassword(board: Board, password: string): Promise<boolean> {
   if (!board.pass_hash) return true;
   if (!password) return false;
-  const hash = await sha256Hex(password);
+  const hash = board.pass_salt
+    ? await sha256Hex(board.pass_salt + password)
+    : await sha256Hex(password);
   return hash === board.pass_hash;
+}
+
+// 分区密码盐值：16 位十六进制（8 字节）
+export function randomSalt(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// 一次查询拿全部帖数，替代列表场景逐分区 COUNT 的 N+1
+export async function countAllBoardPosts(env: Env): Promise<Map<number, number>> {
+  const res = await env.DB.prepare(
+    `SELECT board_id, COUNT(*) AS n FROM posts WHERE is_deleted = 0 AND board_id IS NOT NULL GROUP BY board_id`,
+  ).all<{ board_id: number; n: number }>();
+  const map = new Map<number, number>();
+  for (const r of res.results ?? []) map.set(Number(r.board_id), Number(r.n));
+  return map;
 }
 
 export function serializeBoard(b: Board, postCount?: number) {

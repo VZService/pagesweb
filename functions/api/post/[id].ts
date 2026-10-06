@@ -34,6 +34,13 @@ export async function onRequest(context: Ctx): Promise<Response> {
       .bind(id)
       .all<Post>();
 
+    // 回复计数单独精确统计，列表本身有 200 条展示上限，二者不混用
+    const replyCountRow = await context.env.DB.prepare(
+      `SELECT COUNT(*) AS n FROM posts WHERE reply_to = ? AND is_deleted = 0`,
+    )
+      .bind(id)
+      .first<{ n: number }>();
+
     let parent = null;
     if (post.reply_to) {
       const p = await getPost(context.env, post.reply_to);
@@ -44,7 +51,7 @@ export async function onRequest(context: Ctx): Promise<Response> {
 
     return ok({
       post: serializePost(post, {
-        replies: (replies.results ?? []).length,
+        replies: replyCountRow?.n ?? 0,
         boardSlug: board?.slug,
         boardName: board?.name,
       }),
