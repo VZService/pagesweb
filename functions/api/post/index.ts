@@ -31,7 +31,7 @@ export async function onRequest(context: Ctx): Promise<Response> {
   if (!auth) return fail("invalid_key", "KEY 无效或已吊销", 401);
   if (auth.scope !== "write") return fail("readonly_key", "该子 KEY 是只读权限，不能发帖", 403);
 
-  // ---- 分区必填 ----
+  // 分区必填
   const rawBoard = body.board ?? body.board_slug ?? body.partition;
   const rawBoardId = body.board_id;
   if (rawBoard === undefined && rawBoardId === undefined) {
