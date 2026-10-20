@@ -3,14 +3,14 @@
 // 分区若设了密码，必须同时带 board_password。
 import {
   Ctx, fail, ok, preflight, readJson, readKey, isBrowserOrigin, clampString,
-} from "../../../src/_util.ts";
-import { authByKey, bumpPostCount, audit } from "../../../src/_auth.ts";
+} from "../../src/_util.ts";
+import { authByKey, bumpPostCount, audit } from "../../src/_auth.ts";
 import {
   createPost, getPost, serializePost, TITLE_MAX, CONTENT_MAX,
-} from "../../../src/_posts.ts";
+} from "../../src/_posts.ts";
 import {
   getBoardById, getBoardBySlug, checkBoardPassword, boardHasPassword, countBoardPosts,
-} from "../../../src/_boards.ts";
+} from "../../src/_boards.ts";
 
 export async function onRequest(context: Ctx): Promise<Response> {
   if (context.request.method === "OPTIONS") return preflight();

@@ -33,9 +33,8 @@ functions/                只放路由文件，共享代码一律不放这里
       profile.ts          PATCH /api/auth/profile
       subkey.ts           GET/POST/DELETE /api/auth/subkey
     account/[username].ts GET /api/account/:username
-    post/
-      index.ts            POST /api/post
-      [id].ts             GET/PATCH/DELETE /api/post/:id
+    post/[id].ts          GET/PATCH/DELETE /api/post/:id
+    post.ts               POST /api/post
 src/                      共享模块（必须留在 functions 之外）
   _util.ts                统一响应、错误、鉴权取值
   _db.ts                  D1 schema 与迁移
